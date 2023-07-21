@@ -1,0 +1,40 @@
+pipeline {
+    agent { label 'project' }
+    
+    stages{
+        stage('Build'){
+            steps{
+                sh 'sudo docker build . -t baduguaparna/nodo-todo-app-test:latest'
+            }
+        }
+        stage('Test image') {
+            steps {
+                echo 'testing...'
+                sh 'sudo docker inspect --type=image baduguaparna/nodo-todo-app-test:latest '
+            }
+        }
+        
+        stage('Push'){
+            steps{
+        	     sh "sudo docker login -u baduguaparna -p dckr_pat_zsdhCTpRamtR-sPVHIk2PT1k2YE"
+                 sh 'sudo docker push baduguaparna/nodo-todo-app-test:latest'
+            }
+        }  
+        stage('Deploy'){
+            steps{
+                echo 'deploying on another server'
+                sh 'sudo docker stop nodetodoapp || true'
+                sh 'sudo docker rm nodetodoapp || true'
+                sh 'sudo docker run -d --name nodetodoapp baduguaparna/nodo-todo-app-test:latest'
+                sh '''
+                ssh -i Ubuntudemo.pem -o StrictHostKeyChecking=no ubuntu@172.31.38.142 <<EOF
+                sudo docker login -u baduguaparna -p dckr_pat_zsdhCTpRamtR-sPVHIk2PT1k2YE
+                sudo docker pull baduguaparna/nodo-todo-app-test:latest
+                sudo docker stop nodetodoapp || true
+                sudo docker rm nodetodoapp || true 
+                sudo docker run -d --name nodetodoapp baduguaparna/nodo-todo-app-test:latest
+                '''
+            }
+        }
+    }
+}
